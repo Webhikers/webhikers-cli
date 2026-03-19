@@ -67,9 +67,32 @@ export async function createCommand(name) {
 
   // --- 2. Create GitHub repo from template ---
   console.log("Creating GitHub repo from template...");
+
+  // Create repo first (without --clone, to avoid race condition)
   run(
-    `gh repo create ${GITHUB_ORG}/${name} --template ${TEMPLATE_REPO} --private --clone`
+    `gh repo create ${GITHUB_ORG}/${name} --template ${TEMPLATE_REPO} --private`
   );
+
+  // Wait for GitHub to finish creating the repo from template
+  console.log("  Waiting for GitHub to prepare the repository...");
+  const maxRetries = 12;
+  let cloned = false;
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    try {
+      runCapture(`gh repo clone ${GITHUB_ORG}/${name} ${name}`);
+      cloned = true;
+      break;
+    } catch {
+      console.log(`  Retrying clone... (${i + 1}/${maxRetries})`);
+    }
+  }
+
+  if (!cloned) {
+    console.error("Error: Could not clone repo after 60 seconds.");
+    console.error(`Try manually: gh repo clone ${GITHUB_ORG}/${name}`);
+    process.exit(1);
+  }
 
   const projectDir = resolve(process.cwd(), name);
   if (!existsSync(projectDir)) {
