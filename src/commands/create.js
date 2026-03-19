@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { loadConfig, getConfigPath } from "../utils/config-store.js";
 
@@ -162,8 +162,11 @@ export async function createCommand(name) {
   });
   const appUuid = app.uuid;
 
-  console.log(c.dim(`  Setting domain...`));
+  console.log(c.dim(`  Loading compose file and setting domain...`));
+  const composeContent = readFileSync(resolve(projectDir, "docker-compose.yaml"), "utf-8");
+  const composeBase64 = Buffer.from(composeContent).toString("base64");
   await coolifyApi(config, "PATCH", `/applications/${appUuid}`, {
+    docker_compose_raw: composeBase64,
     docker_compose_domains: [
       { name: "app", domain: `https://${domain}` },
     ],
