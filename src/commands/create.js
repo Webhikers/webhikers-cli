@@ -164,9 +164,9 @@ export async function createCommand(name) {
 
   console.log(c.dim(`  Setting domain...`));
   await coolifyApi(config, "PATCH", `/applications/${appUuid}`, {
-    docker_compose_domains: JSON.stringify([
+    docker_compose_domains: [
       { name: "app", domain: `https://${domain}` },
-    ]),
+    ],
   });
 
   console.log(c.dim("  Setting environment variables..."));
