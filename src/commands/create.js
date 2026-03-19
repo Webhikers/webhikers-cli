@@ -157,6 +157,7 @@ export async function createCommand(name) {
     git_repository: `Webhikers/${name}`,
     git_branch: "master",
     build_pack: "dockercompose",
+    ports_exposes: "3000",
     instant_deploy: false,
   });
   const appUuid = app.uuid;
