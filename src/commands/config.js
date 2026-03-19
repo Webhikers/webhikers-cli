@@ -20,6 +20,7 @@ export async function configCommand() {
     console.log(`  Server UUID:    ${maskValue(existing.serverUuid)}`);
     console.log(`  SSH User:       ${existing.sshUser || "—"}`);
     console.log(`  SSH Key:        ${existing.sshKeyPath || "—"}`);
+    console.log(`  GitHub App:     ${maskValue(existing.githubAppUuid)}`);
     console.log("");
 
     const { overwrite } = await inquirer.prompt([
@@ -110,6 +111,12 @@ export async function configCommand() {
       message: "SSH User:\n  (Standard ist root, Enter drücken wenn korrekt)\n ",
       default: "root",
     },
+    {
+      type: "input",
+      name: "githubAppUuid",
+      message: "GitHub App UUID:\n  (Coolify UI → Sources → GitHub App klicken → UUID steht in der URL)\n ",
+      validate: (v) => (v.length > 0 ? true : "UUID ist erforderlich"),
+    },
   ]);
 
   const coolifyUrl = `http://${answers.serverIp}:${answers.coolifyPort}`;
@@ -122,6 +129,7 @@ export async function configCommand() {
     serverUuid: answers.serverUuid,
     sshUser: answers.sshUser,
     sshKeyPath,
+    githubAppUuid: answers.githubAppUuid,
   };
 
   saveConfig(config);

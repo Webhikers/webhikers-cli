@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, writeFileSync, readFileSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { loadConfig, getConfigPath } from "../utils/config-store.js";
 
@@ -7,13 +7,23 @@ const TEMPLATE_REPO = "Webhikers/nextjs-vibe-starter";
 const GITHUB_ORG = "Webhikers";
 const DOMAIN_SUFFIX = "preview.webhikers.dev";
 
+// ANSI colors
+const c = {
+  green: (s) => `\x1b[32m${s}\x1b[0m`,
+  red: (s) => `\x1b[31m${s}\x1b[0m`,
+  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
+  cyan: (s) => `\x1b[36m${s}\x1b[0m`,
+  bold: (s) => `\x1b[1m${s}\x1b[0m`,
+  dim: (s) => `\x1b[2m${s}\x1b[0m`,
+};
+
 function run(cmd, options = {}) {
-  console.log(`  → ${cmd}`);
+  console.log(c.dim(`  → ${cmd}`));
   return execSync(cmd, { stdio: "inherit", ...options });
 }
 
-function runCapture(cmd) {
-  return execSync(cmd, { encoding: "utf-8" }).trim();
+function runCapture(cmd, options = {}) {
+  return execSync(cmd, { encoding: "utf-8", ...options }).trim();
 }
 
 async function coolifyApi(config, method, path, body) {
@@ -39,12 +49,12 @@ async function coolifyApi(config, method, path, body) {
 }
 
 export async function createCommand(name) {
-  console.log(`\nCreating project: ${name}\n`);
+  console.log(c.bold(`\nCreating project: ${name}\n`));
 
   // --- 1. Check prerequisites ---
   const config = loadConfig();
   if (!config) {
-    console.error(`Error: ${getConfigPath()} not found.`);
+    console.error(c.red(`Error: ${getConfigPath()} not found.`));
     console.error("Run 'webhikers config' first.");
     process.exit(1);
   }
@@ -52,7 +62,7 @@ export async function createCommand(name) {
   try {
     runCapture("which gh");
   } catch {
-    console.error("Error: GitHub CLI (gh) not found.");
+    console.error(c.red("Error: GitHub CLI (gh) not found."));
     console.error("Install it: https://cli.github.com");
     process.exit(1);
   }
@@ -60,21 +70,19 @@ export async function createCommand(name) {
   try {
     runCapture("gh auth status");
   } catch {
-    console.error("Error: Not logged into GitHub CLI.");
+    console.error(c.red("Error: Not logged into GitHub CLI."));
     console.error("Run: gh auth login");
     process.exit(1);
   }
 
   // --- 2. Create GitHub repo from template ---
-  console.log("Creating GitHub repo from template...");
+  console.log(c.cyan("1/5 Creating GitHub repo from template..."));
 
-  // Create repo first (without --clone, to avoid race condition)
   run(
     `gh repo create ${GITHUB_ORG}/${name} --template ${TEMPLATE_REPO} --private`
   );
 
-  // Wait for GitHub to finish creating the repo from template
-  console.log("  Waiting for GitHub to prepare the repository...");
+  console.log(c.dim("  Waiting for GitHub to prepare the repository..."));
   const maxRetries = 12;
   let cloned = false;
   for (let i = 0; i < maxRetries; i++) {
@@ -84,28 +92,30 @@ export async function createCommand(name) {
       cloned = true;
       break;
     } catch {
-      console.log(`  Retrying clone... (${i + 1}/${maxRetries})`);
+      console.log(c.dim(`  Retrying clone... (${i + 1}/${maxRetries})`));
     }
   }
 
   if (!cloned) {
-    console.error("Error: Could not clone repo after 60 seconds.");
+    console.error(c.red("Error: Could not clone repo after 60 seconds."));
     console.error(`Try manually: gh repo clone ${GITHUB_ORG}/${name}`);
     process.exit(1);
   }
 
   const projectDir = resolve(process.cwd(), name);
   if (!existsSync(projectDir)) {
-    console.error(`Error: Expected directory ${projectDir} not found.`);
+    console.error(c.red(`Error: Expected directory ${projectDir} not found.`));
     process.exit(1);
   }
+  console.log(c.green("  ✓ Repo created and cloned"));
 
   // --- 3. npm install ---
-  console.log("\nInstalling dependencies...");
+  console.log(c.cyan("\n2/5 Installing dependencies..."));
   run("npm install", { cwd: projectDir });
+  console.log(c.green("  ✓ Dependencies installed"));
 
   // --- 4. Generate .env ---
-  console.log("\nGenerating .env...");
+  console.log(c.cyan("\n3/5 Generating .env..."));
   const payloadSecret = runCapture("openssl rand -hex 32");
   const domain = `${name}.${DOMAIN_SUFFIX}`;
   const siteUrl = `https://${domain}`;
@@ -116,66 +126,62 @@ export async function createCommand(name) {
   ].join("\n");
 
   writeFileSync(resolve(projectDir, ".env"), envContent, "utf-8");
-  console.log("  .env written (PAYLOAD_SECRET + SITE_URL)");
+  console.log(c.green("  ✓ .env written"));
 
   // --- 5. Get git remote URL ---
   let gitRepo;
   try {
     gitRepo = runCapture("git remote get-url origin", { cwd: projectDir });
   } catch {
-    console.error("Error: No git remote 'origin' found.");
+    console.error(c.red("Error: No git remote 'origin' found."));
     process.exit(1);
   }
 
   // --- 6. Setup Coolify deployment ---
-  console.log("\nSetting up Coolify deployment...");
-  console.log(`  Domain: ${domain}`);
-  console.log(`  Git repo: ${gitRepo}`);
+  console.log(c.cyan("\n4/5 Setting up Coolify deployment..."));
+  console.log(`  Domain: ${c.bold(domain)}`);
 
-  // Create project
-  console.log("  Creating Coolify project...");
+  console.log(c.dim("  Creating Coolify project..."));
   const project = await coolifyApi(config, "POST", "/projects", {
     name,
-    description: `${name} — deployed via webhikers CLI`,
+    description: `${name} - deployed via webhikers CLI`,
   });
   const projectUuid = project.uuid;
-  console.log(`  Project created: ${projectUuid}`);
 
-  // Create application
-  console.log("  Creating application...");
-  const app = await coolifyApi(config, "POST", "/applications/public", {
+  console.log(c.dim("  Creating application..."));
+  const app = await coolifyApi(config, "POST", "/applications/private-github-app", {
     project_uuid: projectUuid,
     server_uuid: config.serverUuid,
     environment_name: "production",
-    git_repository: gitRepo,
+    github_app_uuid: config.githubAppUuid,
+    git_repository: `Webhikers/${name}`,
     git_branch: "master",
     build_pack: "dockerfile",
     ports_exposes: "3000",
     instant_deploy: false,
   });
   const appUuid = app.uuid;
-  console.log(`  Application created: ${appUuid}`);
 
-  // Set domain
-  console.log(`  Setting domain to ${domain}...`);
+  console.log(c.dim(`  Setting domain...`));
   await coolifyApi(config, "PATCH", `/applications/${appUuid}`, {
     domains: `https://${domain}`,
   });
 
-  // Set environment variables
-  console.log("  Setting environment variables...");
+  console.log(c.dim("  Setting environment variables..."));
   await coolifyApi(config, "POST", `/applications/${appUuid}/envs`, {
     key: "PAYLOAD_SECRET",
     value: payloadSecret,
-    is_build_time: true,
+    is_preview: false,
   });
   await coolifyApi(config, "POST", `/applications/${appUuid}/envs`, {
     key: "SITE_URL",
     value: siteUrl,
-    is_build_time: true,
+    is_preview: false,
   });
+  console.log(c.green("  ✓ Coolify project configured"));
 
   // --- 7. Write .deploy.json ---
+  console.log(c.cyan("\n5/5 Writing .deploy.json..."));
   const deployConfig = {
     serverIp: config.serverIp,
     domain,
@@ -187,24 +193,33 @@ export async function createCommand(name) {
     JSON.stringify(deployConfig, null, 2) + "\n",
     "utf-8"
   );
-  console.log("  .deploy.json written");
+  console.log(c.green("  ✓ .deploy.json written"));
 
   // --- 8. Summary ---
-  console.log("");
-  console.log("=========================================");
-  console.log("  Project created successfully!");
-  console.log("=========================================");
-  console.log("");
-  console.log(`  Repo:    https://github.com/${GITHUB_ORG}/${name}`);
-  console.log(`  Domain:  https://${domain}`);
-  console.log(`  Dir:     ${projectDir}`);
-  console.log("");
-  console.log("  MANUAL STEP:");
-  console.log("  Open Coolify UI → Application → Storages");
-  console.log("  Add two volumes:");
-  console.log("    1. /app/data          (SQLite database)");
-  console.log("    2. /app/public/media  (uploaded images)");
-  console.log("");
-  console.log(`  Ready! Run: cd ${name} && npm run dev`);
-  console.log("=========================================");
+  console.log("\n" + c.green("═══════════════════════════════════════════"));
+  console.log(c.green(c.bold("  Project created successfully!")));
+  console.log(c.green("═══════════════════════════════════════════\n"));
+
+  console.log(`  ${c.bold("Repo:")}     https://github.com/${GITHUB_ORG}/${name}`);
+  console.log(`  ${c.bold("Domain:")}   https://${domain}`);
+  console.log(`  ${c.bold("Coolify:")}  ${config.coolifyUrl}`);
+  console.log(`  ${c.bold("Dir:")}      ${projectDir}`);
+
+  console.log(c.yellow(`\n  ⚠  BEFORE FIRST DEPLOY: Add 2 persistent volumes\n`));
+  console.log(c.yellow(`  1. Open Coolify UI → Projects → "${name}"`));
+  console.log(c.yellow(`  2. Click "Persistent Storage" in the left sidebar`));
+  console.log(c.yellow(`  3. Click "+ Add" → "Volume Mount" and fill in:`));
+  console.log(c.yellow(`       Name:             ${c.bold(`${name}-data`)}`));
+  console.log(c.yellow(`       Source Path:       ${c.dim("(leave empty)")}`));
+  console.log(c.yellow(`       Destination Path:  ${c.bold("/app/data")}`));
+  console.log(c.yellow(`     → Click "Add"`));
+  console.log(c.yellow(`  4. Click "+ Add" → "Volume Mount" again:`));
+  console.log(c.yellow(`       Name:             ${c.bold(`${name}-media`)}`));
+  console.log(c.yellow(`       Source Path:       ${c.dim("(leave empty)")}`));
+  console.log(c.yellow(`       Destination Path:  ${c.bold("/app/public/media")}`));
+  console.log(c.yellow(`     → Click "Add"`));
+  console.log(c.yellow(`  5. Click "Deploy"\n`));
+  console.log(c.yellow(`  Volumes MUST be added before the first deploy!`));
+
+  console.log(`\n  ${c.bold("Local dev:")} cd ${name} && npm run dev\n`);
 }
