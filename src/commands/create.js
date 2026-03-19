@@ -81,7 +81,7 @@ export async function createCommand(name) {
   console.log("=========================================");
   console.log("");
   console.log(`  Repo:    https://github.com/${GITHUB_ORG}/${name}`);
-  console.log(`  Domain:  https://${name}.webhikers.site`);
+  console.log(`  Domain:  https://${name}.preview.webhikers.dev`);
   console.log(`  Dir:     ${projectDir}`);
   console.log("");
   console.log("  MANUAL STEP:");
