@@ -128,16 +128,7 @@ export async function createCommand(name) {
   writeFileSync(resolve(projectDir, ".env"), envContent, "utf-8");
   console.log(c.green("  ✓ .env written"));
 
-  // --- 5. Get git remote URL ---
-  let gitRepo;
-  try {
-    gitRepo = runCapture("git remote get-url origin", { cwd: projectDir });
-  } catch {
-    console.error(c.red("Error: No git remote 'origin' found."));
-    process.exit(1);
-  }
-
-  // --- 6. Setup Coolify deployment ---
+  // --- 5. Setup Coolify deployment ---
   console.log(c.cyan("\n4/5 Setting up Coolify deployment..."));
   console.log(`  Domain: ${c.bold(domain)}`);
 
