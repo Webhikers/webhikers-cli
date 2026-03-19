@@ -156,7 +156,8 @@ export async function createCommand(name) {
     github_app_uuid: config.githubAppUuid,
     git_repository: `Webhikers/${name}`,
     git_branch: "master",
-    build_pack: "dockerfile",
+    build_pack: "dockercompose",
+    docker_compose_location: "docker-compose.yml",
     ports_exposes: "3000",
     instant_deploy: false,
   });
@@ -205,21 +206,8 @@ export async function createCommand(name) {
   console.log(`  ${c.bold("Coolify:")}  ${config.coolifyUrl}`);
   console.log(`  ${c.bold("Dir:")}      ${projectDir}`);
 
-  console.log(c.yellow(`\n  ⚠  BEFORE FIRST DEPLOY: Add 2 persistent volumes\n`));
-  console.log(c.yellow(`  1. Open Coolify UI → Projects → "${name}"`));
-  console.log(c.yellow(`  2. Click "Persistent Storage" in the left sidebar`));
-  console.log(c.yellow(`  3. Click "+ Add" → "Volume Mount" and fill in:`));
-  console.log(c.yellow(`       Name:             ${c.bold(`${name}-data`)}`));
-  console.log(c.yellow(`       Source Path:       ${c.dim("(leave empty)")}`));
-  console.log(c.yellow(`       Destination Path:  ${c.bold("/app/data")}`));
-  console.log(c.yellow(`     → Click "Add"`));
-  console.log(c.yellow(`  4. Click "+ Add" → "Volume Mount" again:`));
-  console.log(c.yellow(`       Name:             ${c.bold(`${name}-media`)}`));
-  console.log(c.yellow(`       Source Path:       ${c.dim("(leave empty)")}`));
-  console.log(c.yellow(`       Destination Path:  ${c.bold("/app/public/media")}`));
-  console.log(c.yellow(`     → Click "Add"`));
-  console.log(c.yellow(`  5. Click "Deploy"\n`));
-  console.log(c.yellow(`  Volumes MUST be added before the first deploy!`));
+  console.log(c.green(`\n  Volumes are configured automatically via docker-compose.yml.`));
+  console.log(c.yellow(`\n  To deploy: Open Coolify UI → Projects → "${name}" → Deploy`));
 
   console.log(`\n  ${c.bold("Local dev:")} cd ${name} && npm run dev\n`);
 }
