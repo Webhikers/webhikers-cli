@@ -148,6 +148,10 @@ export async function createCommand(name) {
   });
   const projectUuid = project.uuid;
 
+  console.log(c.dim("  Reading compose file..."));
+  const composeContent = readFileSync(resolve(projectDir, "docker-compose.yaml"), "utf-8");
+  const composeBase64 = Buffer.from(composeContent).toString("base64");
+
   console.log(c.dim("  Creating application..."));
   const app = await coolifyApi(config, "POST", "/applications/private-github-app", {
     project_uuid: projectUuid,
@@ -158,19 +162,13 @@ export async function createCommand(name) {
     git_branch: "master",
     build_pack: "dockercompose",
     ports_exposes: "3000",
-    instant_deploy: false,
-  });
-  const appUuid = app.uuid;
-
-  console.log(c.dim(`  Loading compose file and setting domain...`));
-  const composeContent = readFileSync(resolve(projectDir, "docker-compose.yaml"), "utf-8");
-  const composeBase64 = Buffer.from(composeContent).toString("base64");
-  await coolifyApi(config, "PATCH", `/applications/${appUuid}`, {
     docker_compose_raw: composeBase64,
     docker_compose_domains: [
       { name: "app", domain: `https://${domain}` },
     ],
+    instant_deploy: false,
   });
+  const appUuid = app.uuid;
 
   console.log(c.dim("  Setting environment variables..."));
   await coolifyApi(config, "POST", `/applications/${appUuid}/envs`, {
