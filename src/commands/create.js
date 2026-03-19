@@ -157,15 +157,15 @@ export async function createCommand(name) {
     git_repository: `Webhikers/${name}`,
     git_branch: "master",
     build_pack: "dockercompose",
-    docker_compose_location: "docker-compose.yml",
     ports_exposes: "3000",
     instant_deploy: false,
   });
   const appUuid = app.uuid;
 
-  console.log(c.dim(`  Setting domain...`));
+  console.log(c.dim(`  Setting domain and compose location...`));
   await coolifyApi(config, "PATCH", `/applications/${appUuid}`, {
     domains: `https://${domain}`,
+    docker_compose_location: "/docker-compose.yml",
   });
 
   console.log(c.dim("  Setting environment variables..."));
