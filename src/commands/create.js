@@ -188,12 +188,12 @@ export async function createCommand(name) {
     "utf-8"
   );
   writeFileSync(
-    resolve(projectDir, ".sync-guard.json"),
-    JSON.stringify({ enabled: true, lastPull: null }, null, 2) + "\n",
+    resolve(projectDir, ".claude-guard.json"),
+    JSON.stringify({ fileGuard: true, syncGuard: true, lastPull: null, allowedPaths: ["src/", "seed.ts"] }, null, 2) + "\n",
     "utf-8"
   );
-  run(`git add .deploy.json .sync-guard.json && git commit -m "Enable sync guard + deploy config" && git push`, { cwd: projectDir });
-  console.log(c.green("  ✓ .deploy.json + sync guard written"));
+  run(`git add .deploy.json .claude-guard.json && git commit -m "Enable guards + deploy config" && git push`, { cwd: projectDir });
+  console.log(c.green("  ✓ .deploy.json + guards written"));
 
   // --- 8. Summary ---
   console.log("\n" + c.green("═══════════════════════════════════════════"));
