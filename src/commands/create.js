@@ -174,7 +174,7 @@ export async function createCommand(name) {
   });
   console.log(c.green("  ✓ Coolify project configured"));
 
-  // --- 7. Write .deploy.json ---
+  // --- 7. Write .deploy.json + enable sync guard ---
   console.log(c.cyan("\n5/5 Writing .deploy.json..."));
   const deployConfig = {
     serverIp: config.serverIp,
@@ -187,7 +187,13 @@ export async function createCommand(name) {
     JSON.stringify(deployConfig, null, 2) + "\n",
     "utf-8"
   );
-  console.log(c.green("  ✓ .deploy.json written"));
+  writeFileSync(
+    resolve(projectDir, ".sync-guard.json"),
+    JSON.stringify({ enabled: true, lastPull: null }, null, 2) + "\n",
+    "utf-8"
+  );
+  run(`git add .deploy.json .sync-guard.json && git commit -m "Enable sync guard + deploy config" && git push`, { cwd: projectDir });
+  console.log(c.green("  ✓ .deploy.json + sync guard written"));
 
   // --- 8. Summary ---
   console.log("\n" + c.green("═══════════════════════════════════════════"));
