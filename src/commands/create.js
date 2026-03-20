@@ -191,14 +191,6 @@ export async function createCommand(name) {
   const guard = JSON.parse(readFileSync(guardPath, "utf-8"));
   guard.fileGuard = true;
   guard.syncGuard = true;
-
-  // Lock template packages — read from package.json at project creation time
-  const pkg = JSON.parse(readFileSync(resolve(projectDir, "package.json"), "utf-8"));
-  guard.protectedPackages = [
-    ...Object.keys(pkg.dependencies || {}),
-    ...Object.keys(pkg.devDependencies || {}),
-  ];
-
   writeFileSync(guardPath, JSON.stringify(guard, null, 2) + "\n", "utf-8");
   run(`git add .deploy.json .claude-guard.json && git commit -m "Enable guards + deploy config" && git push`, { cwd: projectDir });
   console.log(c.green("  ✓ .deploy.json + guards written"));
