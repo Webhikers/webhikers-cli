@@ -109,13 +109,18 @@ export async function createCommand(name) {
   }
   console.log(c.green("  ✓ Repo created and cloned"));
 
-  // --- 3. npm install ---
-  console.log(c.cyan("\n2/5 Installing dependencies..."));
+  // --- 3. Template setup (remote + merge strategy) ---
+  console.log(c.cyan("\n2/6 Setting up template upstream..."));
+  run("npm run template:setup", { cwd: projectDir });
+  console.log(c.green("  ✓ Template upstream configured"));
+
+  // --- 4. npm install ---
+  console.log(c.cyan("\n3/6 Installing dependencies..."))
   run("npm install", { cwd: projectDir });
   console.log(c.green("  ✓ Dependencies installed"));
 
-  // --- 4. Generate .env ---
-  console.log(c.cyan("\n3/5 Generating .env..."));
+  // --- 5. Generate .env ---
+  console.log(c.cyan("\n4/6 Generating .env..."));
   const payloadSecret = runCapture("openssl rand -hex 32");
   const domain = `${name}.${DOMAIN_SUFFIX}`;
   const siteUrl = `https://${domain}`;
@@ -128,8 +133,8 @@ export async function createCommand(name) {
   writeFileSync(resolve(projectDir, ".env"), envContent, "utf-8");
   console.log(c.green("  ✓ .env written"));
 
-  // --- 5. Setup Coolify deployment ---
-  console.log(c.cyan("\n4/5 Setting up Coolify deployment..."));
+  // --- 6. Setup Coolify deployment ---
+  console.log(c.cyan("\n5/6 Setting up Coolify deployment..."));
   console.log(`  Domain: ${c.bold(domain)}`);
 
   console.log(c.dim("  Creating Coolify project..."));
@@ -175,7 +180,7 @@ export async function createCommand(name) {
   console.log(c.green("  ✓ Coolify project configured"));
 
   // --- 7. Write .deploy.json + enable sync guard ---
-  console.log(c.cyan("\n5/5 Writing .deploy.json..."));
+  console.log(c.cyan("\n6/6 Writing .deploy.json..."));
   const deployConfig = {
     serverIp: config.serverIp,
     domain,
