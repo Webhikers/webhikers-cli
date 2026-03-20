@@ -196,6 +196,7 @@ export async function createCommand(name) {
   const guard = JSON.parse(readFileSync(guardPath, "utf-8"));
   guard.fileGuard = true;
   guard.syncGuard = true;
+  guard.lastPull = new Date().toISOString();
   writeFileSync(guardPath, JSON.stringify(guard, null, 2) + "\n", "utf-8");
   run(`git add .deploy.json .claude-guard.json && git commit -m "Enable guards + deploy config" && git push`, { cwd: projectDir });
   console.log(c.green("  ✓ .deploy.json + guards written"));
