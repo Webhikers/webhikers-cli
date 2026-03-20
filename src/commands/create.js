@@ -189,7 +189,7 @@ export async function createCommand(name) {
   );
   writeFileSync(
     resolve(projectDir, ".claude-guard.json"),
-    JSON.stringify({ fileGuard: true, syncGuard: true, lastPull: null, allowedPaths: ["src/", "seed.ts"] }, null, 2) + "\n",
+    JSON.stringify({ fileGuard: true, syncGuard: true, lastPull: null, allowedPaths: ["src/", "seed.ts", "site.config.ts", "generated-palette.css"] }, null, 2) + "\n",
     "utf-8"
   );
   run(`git add .deploy.json .claude-guard.json && git commit -m "Enable guards + deploy config" && git push`, { cwd: projectDir });
