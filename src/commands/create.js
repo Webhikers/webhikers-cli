@@ -162,7 +162,7 @@ export async function createCommand(name) {
     docker_compose_domains: [
       { name: "app", domain: `https://${domain}` },
     ],
-    instant_deploy: true,
+    instant_deploy: false,
   });
   const appUuid = app.uuid;
 
