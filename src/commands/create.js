@@ -1,17 +1,14 @@
 import { execSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
+import { existsSync, resolve } from "fs";
 import { loadConfig, getConfigPath } from "../utils/config-store.js";
 
 const TEMPLATE_REPO = "Webhikers/nextjs-vibe-starter";
 const GITHUB_ORG = "Webhikers";
-const DOMAIN_SUFFIX = "preview.webhikers.dev";
 
 // ANSI colors
 const c = {
   green: (s) => `\x1b[32m${s}\x1b[0m`,
   red: (s) => `\x1b[31m${s}\x1b[0m`,
-  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
   cyan: (s) => `\x1b[36m${s}\x1b[0m`,
   bold: (s) => `\x1b[1m${s}\x1b[0m`,
   dim: (s) => `\x1b[2m${s}\x1b[0m`,
@@ -24,28 +21,6 @@ function run(cmd, options = {}) {
 
 function runCapture(cmd, options = {}) {
   return execSync(cmd, { encoding: "utf-8", ...options }).trim();
-}
-
-async function coolifyApi(config, method, path, body) {
-  const url = `${config.coolifyUrl}/api/v1${path}`;
-  const options = {
-    method,
-    headers: {
-      Authorization: `Bearer ${config.coolifyToken}`,
-      "Content-Type": "application/json",
-    },
-  };
-  if (body) options.body = JSON.stringify(body);
-
-  const res = await fetch(url, options);
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(
-      `Coolify API error (${res.status}): ${JSON.stringify(data)}`
-    );
-  }
-  return data;
 }
 
 export async function createCommand(name) {
@@ -76,10 +51,10 @@ export async function createCommand(name) {
   }
 
   // --- 2. Create GitHub repo from template ---
-  console.log(c.cyan("1/5 Creating GitHub repo from template..."));
+  console.log(c.cyan("1/4 Creating GitHub repo from template..."));
 
   run(
-    `gh repo create ${GITHUB_ORG}/${name} --template ${TEMPLATE_REPO} --private`
+    `gh repo create ${GITHUB_ORG}/${name} --template ${TEMPLATE_REPO} --private`,
   );
 
   console.log(c.dim("  Waiting for GitHub to prepare the repository..."));
@@ -102,117 +77,53 @@ export async function createCommand(name) {
     process.exit(1);
   }
 
-  const projectDir = resolve(process.cwd(), name);
+  const projectDir = new URL(`file://${process.cwd()}/${name}`).pathname;
   if (!existsSync(projectDir)) {
     console.error(c.red(`Error: Expected directory ${projectDir} not found.`));
     process.exit(1);
   }
   console.log(c.green("  ✓ Repo created and cloned"));
 
-  // --- 3. Template setup (remote + merge strategy) ---
-  console.log(c.cyan("\n2/6 Setting up template upstream..."));
-  run("npm run template:setup", { cwd: projectDir });
-  console.log(c.green("  ✓ Template upstream configured"));
-
-  // --- 4. npm install ---
-  console.log(c.cyan("\n3/6 Installing dependencies..."))
+  // --- 3. npm install ---
+  console.log(c.cyan("\n2/4 Installing dependencies..."));
   run("npm install", { cwd: projectDir });
   console.log(c.green("  ✓ Dependencies installed"));
 
-  // --- 5. Generate .env ---
-  console.log(c.cyan("\n4/6 Generating .env..."));
-  const payloadSecret = runCapture("openssl rand -hex 32");
-  const domain = `${name}.${DOMAIN_SUFFIX}`;
-  const siteUrl = `https://${domain}`;
-  const envContent = [
-    `PAYLOAD_SECRET=${payloadSecret}`,
-    `SITE_URL=http://localhost:3000`,
-    "",
-  ].join("\n");
-
-  writeFileSync(resolve(projectDir, ".env"), envContent, "utf-8");
-  console.log(c.green("  ✓ .env written"));
-
-  // --- 6. Setup Coolify deployment ---
-  console.log(c.cyan("\n5/6 Setting up Coolify deployment..."));
-  console.log(`  Domain: ${c.bold(domain)}`);
-
-  console.log(c.dim("  Creating Coolify project..."));
-  const project = await coolifyApi(config, "POST", "/projects", {
-    name,
-    description: `${name} - deployed via webhikers CLI`,
-  });
-  const projectUuid = project.uuid;
-
-  console.log(c.dim("  Reading compose file..."));
-  const composeContent = readFileSync(resolve(projectDir, "docker-compose.yaml"), "utf-8");
-  const composeBase64 = Buffer.from(composeContent).toString("base64");
-
-  console.log(c.dim("  Creating application..."));
-  const app = await coolifyApi(config, "POST", "/applications/private-github-app", {
-    project_uuid: projectUuid,
-    server_uuid: config.serverUuid,
-    environment_name: "production",
-    github_app_uuid: config.githubAppUuid,
-    git_repository: `Webhikers/${name}`,
-    git_branch: "master",
-    build_pack: "dockercompose",
-    ports_exposes: "3000",
-    docker_compose_raw: composeBase64,
-    docker_compose_domains: [
-      { name: "app", domain: `https://${domain}` },
-    ],
-    instant_deploy: false,
-  });
-  const appUuid = app.uuid;
-
-  console.log(c.dim("  Setting environment variables..."));
-  await coolifyApi(config, "POST", `/applications/${appUuid}/envs`, {
-    key: "PAYLOAD_SECRET",
-    value: payloadSecret,
-    is_preview: false,
-  });
-  await coolifyApi(config, "POST", `/applications/${appUuid}/envs`, {
-    key: "SITE_URL",
-    value: siteUrl,
-    is_preview: false,
-  });
-  console.log(c.green("  ✓ Coolify project configured"));
-
-  // --- 7. Write .deploy.json + enable sync guard ---
-  console.log(c.cyan("\n6/6 Writing .deploy.json..."));
-  const deployConfig = {
-    serverIp: config.serverIp,
-    domain,
-    coolifyProjectUuid: projectUuid,
-    coolifyAppUuid: appUuid,
-  };
-  writeFileSync(
-    resolve(projectDir, ".deploy.json"),
-    JSON.stringify(deployConfig, null, 2) + "\n",
-    "utf-8"
+  // --- 4. Template setup (everything happens in the template script) ---
+  console.log(c.cyan("\n3/4 Running template setup..."));
+  run(
+    `bash scripts/template-setup.sh "${name}" "${config.coolifyToken}" "${config.serverIp}" "${config.serverUuid}" "${config.githubAppUuid}"`,
+    { cwd: projectDir },
   );
-  const guardPath = resolve(projectDir, ".claude-guard.json");
-  const guard = JSON.parse(readFileSync(guardPath, "utf-8"));
-  guard.fileGuard = true;
-  guard.syncGuard = true;
-  guard.lastPull = new Date().toISOString();
-  writeFileSync(guardPath, JSON.stringify(guard, null, 2) + "\n", "utf-8");
-  run(`git add .deploy.json .claude-guard.json && git commit -m "Enable guards + deploy config" && git push`, { cwd: projectDir });
-  console.log(c.green("  ✓ .deploy.json + guards written"));
+  console.log(c.green("  ✓ Template setup complete"));
 
-  // --- 8. Summary ---
-  console.log("\n" + c.green("═══════════════════════════════════════════"));
+  // --- 5. Commit + Push ---
+  console.log(c.cyan("\n4/4 Committing and pushing..."));
+  run(
+    'git add -A && git commit -m "Initial project setup" && git push',
+    { cwd: projectDir },
+  );
+  console.log(c.green("  ✓ Pushed to GitHub"));
+
+  // --- Summary ---
+  const domain = `${name}.preview.webhikers.dev`;
+  console.log(
+    "\n" + c.green("═══════════════════════════════════════════"),
+  );
   console.log(c.green(c.bold("  Project created successfully!")));
-  console.log(c.green("═══════════════════════════════════════════\n"));
+  console.log(
+    c.green("═══════════════════════════════════════════\n"),
+  );
 
-  console.log(`  ${c.bold("Repo:")}     https://github.com/${GITHUB_ORG}/${name}`);
+  console.log(
+    `  ${c.bold("Repo:")}     https://github.com/${GITHUB_ORG}/${name}`,
+  );
   console.log(`  ${c.bold("Domain:")}   https://${domain}`);
   console.log(`  ${c.bold("Coolify:")}  ${config.coolifyUrl}`);
   console.log(`  ${c.bold("Dir:")}      ${projectDir}`);
 
-  console.log(c.green(`\n  Volumes are configured automatically via docker-compose.yml.`));
-  console.log(c.yellow(`\n  To deploy: Open Coolify UI → Projects → "${name}" → Deploy`));
-
+  console.log(
+    `\n  ${c.bold("To deploy:")} Open Coolify UI → Projects → "${name}" → Deploy`,
+  );
   console.log(`\n  ${c.bold("Local dev:")} cd ${name} && npm run dev\n`);
 }
