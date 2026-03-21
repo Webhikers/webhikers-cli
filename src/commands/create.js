@@ -127,4 +127,17 @@ export async function createCommand(name) {
     `\n  ${c.bold("To deploy:")} Open Coolify UI → Projects → "${name}" → Deploy`,
   );
   console.log(`\n  ${c.bold("Local dev:")} cd ${name} && npm run dev\n`);
+
+  // --- 6. Open Claude Code in new terminal window ---
+  console.log(c.cyan("Opening Claude Code..."));
+  try {
+    execSync(
+      `osascript -e 'tell app "Terminal" to do script "cd ${projectDir} && claude"'`,
+    );
+    console.log(c.green("  ✓ Claude Code opened in new terminal window"));
+  } catch {
+    console.log(
+      c.dim(`  Could not open automatically. Run: cd ${name} && claude`),
+    );
+  }
 }
