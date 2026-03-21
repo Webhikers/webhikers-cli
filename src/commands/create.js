@@ -1,5 +1,6 @@
 import { execSync } from "child_process";
-import { existsSync, resolve } from "fs";
+import { existsSync } from "fs";
+import { resolve } from "path";
 import { loadConfig, getConfigPath } from "../utils/config-store.js";
 
 const TEMPLATE_REPO = "Webhikers/nextjs-vibe-starter";
