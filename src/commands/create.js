@@ -93,7 +93,7 @@ export async function createCommand(name) {
   // --- 4. Template setup (everything happens in the template script) ---
   console.log(c.cyan("\n3/4 Running template setup..."));
   run(
-    `bash scripts/template-setup.sh "${name}" "${config.coolifyToken}" "${config.serverIp}" "${config.serverUuid}" "${config.githubAppUuid}"`,
+    `npx tsx scripts/setup/template-setup.ts "${name}" "${config.coolifyToken}" "${config.serverIp}" "${config.serverUuid}" "${config.githubAppUuid}"`,
     { cwd: projectDir },
   );
   console.log(c.green("  ✓ Template setup complete"));
